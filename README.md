@@ -1,8 +1,18 @@
 # Volume-Knob
 A arduino pro micro project with a rotary encoder to controll volume or mute the sound 
+Not the best idea to use LEDs and not a ring pcb but with some Hot Glue I could fix it.
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_190823981.PORTRAIT.jpg" width="800">
+# What do you need
+  Arduino Pro Micro: https://www.amazon.de/Micro-ATmega32U4-Arduino-Leonardo-%C3%A4hnlich/dp/B01D0OI90U
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/volumeKnobGif.gif" width="800"/>
+  Rotary Encoder: https://www.amazon.de/Sourcingmap-Schaft-360-Grad-Rotary-Encoder/dp/B00MJU9DWK/ref=sr_1_18?__mk_de_DE=%C3%85M%C3%85%C5%BD%C3%95%C3%91&crid=3OXLEIM9G0VHQ&dchild=1&keywords=rotary+encoder&qid=1621675548&sprefix=rotary+%2Caps%2C189&sr=8-18
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_220220014.jpg" width="800">
+  8* Green LEDs
+
+  2* 10kOhm Resistors
+  
+<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/volumeKnobGif.gif" width="600"/>
+
+<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_190823981.PORTRAIT.jpg" width="600">
+
+<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_220220014.jpg" width="600">
