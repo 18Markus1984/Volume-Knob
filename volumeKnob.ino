@@ -2,9 +2,7 @@
 #include <Encoder.h>
 #include <Adafruit_NeoPixel.h>
 #include <OneButton.h>
-#include <Thread.h>
-#include <ThreadController.h>
-//#include <EEPROM.h>
+#include <EEPROM.h>
 
 #define PIN       7 //Datapin for the LEDs
 #define NUMPIXELS 8 //Anzahl der LEDs
@@ -14,34 +12,32 @@ byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{1
 {0,128,255},{0,64,255},{0,0,255},{64,0,255},{128,0,255},{191,0,255},{255,0,255},{255,0,191},{255,0,128},{255,0,64},{255,0,0}};
 int row = 0;
 
+//aktColor
+byte aktColor[8][3];
+
 //Rotary Encoder
 const int CLK = 6;//Datapin Encoder         
 const int DT = 5; //Datepin Encoder
 const int SW = 2; //Button des Encoders
 
+int oldpos = 0;   //Puffer for Encoder
 int pos = 0;    //the selected Led
 int  brightness = 255; //Helligkeit der LEDs
-long myTimer = 0;
 long myTimeout = 5000;    //timer when the lights should turn off
-bool timer1 = false;      //State for turning left
-bool timer2 = false;      //State for turning right
 long altePosition = -999;   //position for the rotary encoder
+bool timer1 = false;      //State for turning left //I use this variables to check that you have to move two incerements to get one move in the volume 
+bool timer2 = false;      //State for turning right
 
 //Settings-menu
-int menue = 0;
+int menu = 0;
 int selected = 0;
 
 //Settings
 int sec = 0;
 uint8_t wait = 20;
 int NumbPixel = 0; //Max Pixel = 7 und Min Pixel = 1
-int modi = 0; //Modi: 0 = Normal Only Color with Truning, 1 = A constant rotating Pixel, 2 = colorWipes, 3 = rainbow, 4 = rainbowCycle, 5 = theaterChaseRainbow
+int mode = 0; //Modi: 0 = Normal Only Color with Truning, 1 = A constant rotating Pixel, 2 = colorWipes, 3 = rainbow, 4 = rainbowCycle, 5 = theaterChaseRainbow
 
-//"Threads"
-ThreadController controll = ThreadController();
-Thread rainbowThread = Thread();
-Thread rainbowCycleThread = Thread();
-Thread colorWipeThread = Thread();
 
 OneButton EncoderSwitch(SW,true);
 Encoder meinEncoder(DT,CLK);  
@@ -49,49 +45,79 @@ Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 void setup(){
   Serial.begin(9600);
+  Serial.println("Consumer setup...");
   Consumer.begin();
 
   //Rotary Encoder with Switch
+  Serial.println("Rotary Encoder setup...");
   pinMode(SW, INPUT);
   EncoderSwitch.attachClick(clickt);
-  EncoderSwitch.attachDoubleClick(doubleclick);
-
-  attachInterrupt(digitalPinToInterrupt(SW), checkTicks, CHANGE);
-  //attachInterrupt(digitalPinToInterrupt(CLK), checkTicks, CHANGE);
+  EncoderSwitch.attachLongPressStop(doubleclick);
+  //attachInterrupt(digitalPinToInterrupt(SW), checkTicks, CHANGE);
 
   //LEDs
   pixels.begin();
-
-  //"Threads" to run the LEDs while using the Rotary Encoder
-  rainbowThread.onRun(rainbow);
-  rainbowThread.setInterval(250);
-
-  rainbowCycleThread.onRun(rainbowCycle);
-  rainbowCycleThread.setInterval(500);
-
-  colorWipeThread.onRun(colorWipe);
-  colorWipeThread.setInterval(350);
-
-  //Add the threads to the controller
-  controll.add(&rainbowThread);
-  controll.add(&rainbowCycleThread);
-  controll.add(&colorWipeThread);
+  row = EEPROM.read(0);
+ 
 }
 
-void loop(){
+void loop(){ 
+  if(menu == 0){    //Volume-Controll
+    int i = TurnEncoder(8);
+    if(i != -1){
+      SetLED(oldpos,0,0,0);
+      SetLED(i,color[row][0],color[row][1],color[row][2]);
+      brightness = 255;
+      if(i>oldpos && i != 7 && oldpos != 0){
+        //Serial.print(i);
+        //Serial.print(">");
+        //Serial.print(oldpos);        
+        //Serial.println("VolumeDown");
+        Consumer.write(MEDIA_VOL_DOWN);
+      }else if(i<oldpos && i != 0 && oldpos != 7){
+        //Serial.print(i);
+        //Serial.print("<");
+        //Serial.print(oldpos);  
+        //Serial.println("VolumeUp");
+        Consumer.write(MEDIA_VOL_UP);
+      }
+      oldpos = i;
+    }
+  } else if (menu == 1) {   //Color-Selection
+    int i = TurnEncoder(25);
+    if(i != -1){
+      row = i;
+      lightAll(color[row][0],color[row][1],color[row][2]);
+    }
+  } else if (menu == 2) {
+    int i = TurnEncoder(2);
+    if(i != -1){
+      mode = i;
+    }
+  }
   
-  if(menue == 0){
-    ChangeVolume();
-  }
-  else if (menue == 1)  {
-    ChangeMainColor();
-  }
-  else if (menue == 2) {
-    ChangeModi();
-  }
-  
+  showPixels();
   EncoderSwitch.tick();
-  controll.run();
+  delay(10); 
+}
+
+void showPixels(){
+  for(int i = 0; i < NUMPIXELS; i++){
+      pixels.setPixelColor(i, pixels.Color(aktColor[i][0], aktColor[i][1], aktColor[i][2]));
+  }
+  if(menu == 0){
+    if(brightness <= 1){
+      ResetLEDs();
+    }
+    for(int i = 0; i < NUMPIXELS; i++){
+      if(aktColor[i][0] != 0 || aktColor[i][1] != 0 || aktColor[i][2] != 0){
+        brightness = brightness - 1;
+        i = NUMPIXELS;
+      }
+    }
+  }
+  pixels.setBrightness(brightness);
+  pixels.show();
 }
 
 void checkTicks()
@@ -100,258 +126,85 @@ void checkTicks()
 }
 
 void clickt() {
-  if(menue == 0){
-    Serial.println("Mute"); 
-    Consumer.write(MEDIA_VOL_MUTE);
-    lightAllFade(1500);
-  }
-  if(menue == 1) {
-    Serial.println("Switch to Normal-Modus");
-    row = selected;
-    menue = 0;
-  }
-  if(menue == 2){
-    menue = 0;
+  Serial.println("Click");
+  if(menu == 0){
+    //Consumer.write(MEDIA_VOL_MUTE);
+    Serial.println("Mute");
+    brightness = 255;
+    lightAll(color[row][0],color[row][1],color[row][2]);
+    delay(700); 
+  } else if(menu == 1){
+    Serial.println("leave with selected color");
+    if(row != EEPROM.read(0)){
+      EEPROM.write(0,row);
+    }
+    menu = 0;
+    pos = 0;
+    oldpos = 0;
+    altePosition = -999;
+    delay(100);   
   }
 }
 
 void doubleclick() {
-  if(menue == 0){
-    Serial.println("\nOpen Settings-Color");
-    modi = 0;
-    pixels.clear();
-    menue = 1;
-    selected = row;
-  }else if(menue == 1) {
-    pixels.clear();
-    pixels.show();
-    menue = 2;
-    Serial.println("Switch to Modi-Menu");
-  }else if(menue == 2) {
-    Serial.print("Leave Settings");
-    modi = 0;
-    menue = 0;
-  }
-}
-
-void ChangeVolume() {
-  long neuePosition = meinEncoder.read();   //read the position of the encoder
-  if (neuePosition != altePosition){    
-    Serial.print(neuePosition);
-    pixels.setPixelColor(pos, pixels.Color(color[row][0], color[row][1], color[row][2]));
-    brightness = 255;
-    pixels.setBrightness(255);
-    pixels.show();   // Send the updated pixel colors to the hardware.
-    if(neuePosition < altePosition){      //if the wheel turns left
-        Consumer.write(MEDIA_VOL_UP);
-        if(timer1){
-          pos--;
-          if(pos < 0){
-            pos = 7;
-          }        
-          timer1 = false;
-        }else {
-          timer1 = true;
-        }
-    }else {   
-        Consumer.write(MEDIA_VOL_DOWN);
-        if(timer2){
-          pos++;
-          if(pos == 8){
-            pos = 0;
-          }
-          timer2 = false;
-        }else{
-          timer2 = true;
-        }
-    } 
-    pixels.clear(); // Set all pixel colors to 'off'   
-    myTimer = millis();
-    altePosition = neuePosition;    
-  }
-  if (millis() > myTimeout + myTimer) {   //turns of the Led that was turned on off after the timer ends
-    myTimer = millis();
-    pixels.clear();
-    pixels.show();
-  }
-}
-
-void ChangeMainColor(){
-  long neuePosition = meinEncoder.read();   //read the position of the encoder
-  lightAll();
-  if (neuePosition != altePosition){    
-    //Serial.print(neuePosition);
-    if(neuePosition < altePosition){      //if the wheel turns left
-        if(timer1){
-          selected--;
-          if(selected < 0){
-            selected = 24;
-          }        
-          timer1 = false;
-        }else {
-          timer1 = true;
-        }
-    }else {   
-        if(timer2){
-          selected++;
-          if(selected == 25){
-            selected = 0;
-          }
-          timer2 = false;
-        }else{
-          timer2 = true;
-        }
-    } 
-    altePosition = neuePosition;    
-  }
-}
-
-void ChangeModi(){
-  long neuePosition = meinEncoder.read();   //read the position of the encoder
-  Serial.print("Selected Modi: ");
-  Serial.println(modi);
-  if (neuePosition != altePosition){    
-    Serial.print(neuePosition);
-    if(neuePosition > altePosition){      //if the wheel turns left
-        if(timer1){
-          modi--;
-          if(modi < 0){
-            modi = 5;
-          }
-          else if (modi > 5){
-            modi = 0;        
-          }
-          timer1 = false;
-        }else {
-          timer1 = true;
-        }
-    }else {   
-        if(timer2){
-          modi++;
-          if(modi >= 6){
-            selected = 0;
-          }
-          timer2 = false;
-        }else{
-          timer2 = true;
-        }
-    } 
-    altePosition = neuePosition;    
-  }
-}
-
-void lightAll(){ //Used in the Colorselection-menu
-  pixels.clear();
-  for(int i = 0; i < 9; i++) {
-    pixels.setPixelColor(i, pixels.Color(color[selected][0], color[selected][1], color[selected][2]));
-  }
+  menu++;
+  pos = 0;
   brightness = 255;
-  pixels.setBrightness(255);
-  pixels.show();
+  ResetLEDs();
+  if(menu == 1){
+    lightAll(color[row][0],color[row][1],color[row][2]);
+  }
+  Serial.print(menu);
+  Serial.println("LongClick");
 }
 
-void lightAllFade(int sec) {
-  for(int i = 0; i < NUMPIXELS; i++){
-    pixels.setPixelColor(i, pixels.Color(color[row][0], color[row][1], color[row][2]));
-  }
-  pixels.setBrightness(255);
-  pixels.show();   // Send the updated pixel colors to the hardware.
-  for(int i = 255; i>0; i--){
-    pixels.setBrightness(i);
-    pixels.show();
-    delay(sec/255);
-  }
-  pixels.setBrightness(255);
-  pixels.clear();
-}
-
-void rotatingPixel(){
-  if(modi == 1) {
-    
-  }
-}
-
-void colorWipe() {
-  if(modi == 2) {
-    for(int k=0;k<8;k++){
-      for(int i=0; i<8; i++) {
-        int puffer = i+k;
-        if(puffer > 7){
-          puffer = 0 + k - 1;
-        }
-        Serial.println(puffer);
-        pixels.setPixelColor(puffer, pixels.Color(color[row][0], color[row][1], color[row][2]));
-        pixels.show();
-        delay(300);
-        if(modi != 2){
-           k = 8;
-        }
+int TurnEncoder(int len) {
+  long neuePosition = meinEncoder.read();   //read the position of the encoder
+  if (neuePosition != altePosition){    
+    if(neuePosition < altePosition){      //if the wheel turns left
+      if(timer1){
+        pos--;
+        if(pos < 0){
+          pos = len -1;
+        }        
+        timer1 = false;
+        timer2 = false;
+      }else {
+        timer1 = true;
       }
-      pixels.clear();
-      pixels.show();
+    }else {   
+       if(timer2){
+        pos++;
+        if(pos == len){
+          pos = 0;
+        }
+        timer2 = false;
+        timer1 = false;
+       }else{
+        timer2 = true;
+       }
     }
+    altePosition = neuePosition;
+    return pos;
+  }
+  return -1;
+}
+
+void SetLED(int i, int r, int g, int b){
+  aktColor[i][0] = r;
+  aktColor[i][1] = g;
+  aktColor[i][2] = b;
+}
+
+void ResetLEDs(){
+  for(int i = 0;i< NUMPIXELS; i++){
+    SetLED(i,0,0,0);
   }
   pixels.clear();
 }
 
-void rainbow() {
-  if(modi == 3){
-    Serial.println("rainbow");
-    uint16_t i, j;
-    for(j=0; j<256; j++) {
-        for(i=0; i<pixels.numPixels(); i++) {
-          pixels.setPixelColor(i, Wheel((i+j) & 255));
-          if(modi != 3){
-           j = 256;
-          }
-        }
-        pixels.show();
-        delay(wait);
-    }
+void lightAll(int r, int g, int b) {
+  for(int i = 0; i < NUMPIXELS; i++){
+    SetLED(i,r,g,b);
   }
 }
-
-// Slightly different, this makes the rainbow equally distributed throughout
-void rainbowCycle() {
-  if(modi == 4){
-    Serial.println("rainbowCycles");
-    uint16_t i, j;
-    for(j=0; j<256*5; j++) { // 5 cycles of all colors on wheel
-        for(i=0; i< pixels.numPixels(); i++) {
-          pixels.setPixelColor(i, Wheel(((i * 256 / pixels.numPixels()) + j) & 255));
-          if(modi != 4){
-            j = 256;
-          }
-        }
-        if(modi != 4){
-            j = 256;
-        }
-        pixels.show();
-        delay(wait);
-      
-    }
-    if(menue == 2){
-      modi = 5;
-    }
-  }
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t Wheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if(WheelPos < 85) {
-    return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  }
-  if(WheelPos < 170) {
-    WheelPos -= 85;
-    return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  }
-  WheelPos -= 170;
-  return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-}
-
-//MultibuttonClick <-- Button Click Libary --> Zum Fabrewechseln(Erledigt), Modus wechseln
-//Langsam Ausklingende Lichter
-//Modi maybe in einer zweiten Datei
-//
