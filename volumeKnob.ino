@@ -12,14 +12,13 @@ byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{1
 {0,128,255},{0,64,255},{0,0,255},{64,0,255},{128,0,255},{191,0,255},{255,0,255},{255,0,191},{255,0,128},{255,0,64},{255,0,0}};
 int row = 0;
 
-//aktColor
-byte aktColor[8][3];
-
 //Rotary Encoder
 const int CLK = 6;//Datapin Encoder         
 const int DT = 5; //Datepin Encoder
 const int SW = 2; //Button des Encoders
 
+
+int newpos = 0;
 int oldpos = 0;   //Puffer for Encoder
 int pos = 0;    //the selected Led
 int  brightness = 255; //Helligkeit der LEDs
@@ -28,15 +27,12 @@ long altePosition = -999;   //position for the rotary encoder
 bool timer1 = false;      //State for turning left //I use this variables to check that you have to move two incerements to get one move in the volume 
 bool timer2 = false;      //State for turning right
 
+//Rainbow-Mode
+uint16_t r, m;
+
 //Settings-menu
 int menu = 0;
-int selected = 0;
-
-//Settings
-int sec = 0;
-uint8_t wait = 20;
-int NumbPixel = 0; //Max Pixel = 7 und Min Pixel = 1
-int mode = 0; //Modi: 0 = Normal Only Color with Truning, 1 = A constant rotating Pixel, 2 = colorWipes, 3 = rainbow, 4 = rainbowCycle, 5 = theaterChaseRainbow
+int mode = 1; //Modi: 0 = Normal Only Color with Truning, 1 = A constant rotating Pixel, 2 = colorWipes, 3 = rainbow, 4 = rainbowCycle, 5 = theaterChaseRainbow
 
 
 OneButton EncoderSwitch(SW,true);
@@ -52,7 +48,7 @@ void setup(){
   Serial.println("Rotary Encoder setup...");
   pinMode(SW, INPUT);
   EncoderSwitch.attachClick(clickt);
-  EncoderSwitch.attachLongPressStop(doubleclick);
+  EncoderSwitch.attachLongPressStop(longPress);
   //attachInterrupt(digitalPinToInterrupt(SW), checkTicks, CHANGE);
 
   //LEDs
@@ -62,97 +58,129 @@ void setup(){
 }
 
 void loop(){ 
-  if(menu == 0){    //Volume-Controll
+  if(menu == 0){    //Volume-Control
     int i = TurnEncoder(8);
     if(i != -1){
-      SetLED(oldpos,0,0,0);
-      SetLED(i,color[row][0],color[row][1],color[row][2]);
-      brightness = 255;
-      if(i>oldpos && i != 7 && oldpos != 0){
-        //Serial.print(i);
-        //Serial.print(">");
-        //Serial.print(oldpos);        
+      newpos = i;
+      //pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
+      //pixels.setPixelColor(i, pixels.Color(color[row][0],color[row][1],color[row][2]));      
+      brightness = 255;              
+      if(newpos > oldpos && newpos != 7 && oldpos != 0 || newpos == 0 && oldpos == 7){     
         //Serial.println("VolumeDown");
         Consumer.write(MEDIA_VOL_DOWN);
-      }else if(i<oldpos && i != 0 && oldpos != 7){
-        //Serial.print(i);
-        //Serial.print("<");
-        //Serial.print(oldpos);  
+      }else if(newpos < oldpos && newpos != 0 && oldpos != 7 || newpos == 7 && oldpos == 0){
         //Serial.println("VolumeUp");
         Consumer.write(MEDIA_VOL_UP);
       }
-      oldpos = i;
     }
   } else if (menu == 1) {   //Color-Selection
+    Serial.print("Color-Menu");
     int i = TurnEncoder(25);
     if(i != -1){
       row = i;
       lightAll(color[row][0],color[row][1],color[row][2]);
     }
-  } else if (menu == 2) {
-    int i = TurnEncoder(2);
+  } else if (menu == 2) {   //Mode-Selection
+    int i = TurnEncoder(24);
     if(i != -1){
       mode = i;
+      brightness = 255;
     }
   }
-  
   showPixels();
   EncoderSwitch.tick();
   delay(10); 
 }
 
 void showPixels(){
-  for(int i = 0; i < NUMPIXELS; i++){
-      pixels.setPixelColor(i, pixels.Color(aktColor[i][0], aktColor[i][1], aktColor[i][2]));
-  }
-  if(menu == 0){
+  if((menu == 0 || menu == 2 )&& mode > 0 && mode < 8){
+    int value = 0;
+    if(menu == 0){
+      value = newpos;
+    } else if(menu == 2){
+      value = mode;
+    }
+    if(value != -1 && (menu == 2 || menu == 0)){
+        pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
+        pixels.setPixelColor(value, pixels.Color(color[row][0],color[row][1],color[row][2]));
+        oldpos = value;
+    }
     if(brightness <= 1){
       ResetLEDs();
     }
     for(int i = 0; i < NUMPIXELS; i++){
-      if(aktColor[i][0] != 0 || aktColor[i][1] != 0 || aktColor[i][2] != 0){
+      if(pixels.getPixelColor(i) != pixels.Color(0,0,0)){
         brightness = brightness - 1;
         i = NUMPIXELS;
       }
     }
+  }else if((menu == 0 || menu == 2)&& mode > 8 && mode < 16){
+     for(r = 0; r < NUMPIXELS; r++) {
+      pixels.setPixelColor(r, Wheel((r+m) & 255));
+    }
+    m++;
+    if(m >= 256) {
+      m = 0;
+    }
+    oldpos = newpos;
+  }else if((menu == 0 || menu == 2) && mode > 16 && mode < 24){
+     for(r = 0; r < NUMPIXELS; r++) {
+      pixels.setPixelColor(r,Wheel(((r * 256 / pixels.numPixels()) + m) & 255));
+    }
+    m++;
+    if(m >= 256*5) {
+      m = 0;
+    }
+    oldpos = newpos;
+  } 
+  if(mode == 8 || mode == 16 || mode == 24 || mode == 0 && menu == 2){
+    ResetLEDs();
   }
+  
   pixels.setBrightness(brightness);
   pixels.show();
 }
 
-void checkTicks()
-{
-  EncoderSwitch.tick();
-}
-
 void clickt() {
-  Serial.println("Click");
+  //Serial.println("Click");
   if(menu == 0){
-    //Consumer.write(MEDIA_VOL_MUTE);
-    Serial.println("Mute");
+    Consumer.write(MEDIA_VOL_MUTE);
+    //Serial.println("Mute");
     brightness = 255;
-    lightAll(color[row][0],color[row][1],color[row][2]);
+    pixels.fill(pixels.Color(color[row][0],color[row][1],color[row][2]));
     delay(700); 
   } else if(menu == 1){
     Serial.println("leave with selected color");
-    if(row != EEPROM.read(0)){
-      EEPROM.write(0,row);
-    }
+    EEPROM.update(0,row);
     menu = 0;
     pos = 0;
+    newpos = 0;
+    oldpos = 0;
+    altePosition = -999;
+    delay(100);   
+  } else if(menu == 2){
+    Serial.print("leave with selected mode: ");
+    Serial.println(mode);
+    menu = 0;
+    r = 0;
+    m = 0; 
+    pos = 0;
+    newpos = 0;
     oldpos = 0;
     altePosition = -999;
     delay(100);   
   }
 }
 
-void doubleclick() {
+void longPress() {
   menu++;
   pos = 0;
+  newpos = 0;
+  oldpos = 0;
   brightness = 255;
   ResetLEDs();
   if(menu == 1){
-    lightAll(color[row][0],color[row][1],color[row][2]);
+    lightAll(color[0][0],color[0][1],color[0][2]);
   }
   Serial.print(menu);
   Serial.println("LongClick");
@@ -165,7 +193,7 @@ int TurnEncoder(int len) {
       if(timer1){
         pos--;
         if(pos < 0){
-          pos = len -1;
+          pos = len - 1;
         }        
         timer1 = false;
         timer2 = false;
@@ -190,21 +218,23 @@ int TurnEncoder(int len) {
   return -1;
 }
 
-void SetLED(int i, int r, int g, int b){
-  aktColor[i][0] = r;
-  aktColor[i][1] = g;
-  aktColor[i][2] = b;
+uint32_t Wheel(byte WheelPos) {
+  WheelPos = 255 - WheelPos;
+  if(WheelPos < 85) {
+    return pixels.Color(255 - WheelPos * 3, 0, WheelPos * 3);
+  }
+  if(WheelPos < 170) {
+    WheelPos -= 85;
+    return pixels.Color(0, WheelPos * 3, 255 - WheelPos * 3);
+  }
+  WheelPos -= 170;
+  return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
 void ResetLEDs(){
-  for(int i = 0;i< NUMPIXELS; i++){
-    SetLED(i,0,0,0);
-  }
   pixels.clear();
 }
 
 void lightAll(int r, int g, int b) {
-  for(int i = 0; i < NUMPIXELS; i++){
-    SetLED(i,r,g,b);
-  }
+  pixels.fill(pixels.Color(r,g,b));
 }
