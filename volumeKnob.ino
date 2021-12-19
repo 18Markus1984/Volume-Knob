@@ -30,6 +30,11 @@ bool timer2 = false;      //State for turning right
 //Rainbow-Mode
 uint16_t r, m;
 
+//Felix-Mode
+byte florian[3][3] = {{0,255,0},{255,255,0},{255,0,0}};
+int volumeInProzent = 0;
+bool calibrated = false;
+
 //Settings-menu
 int menu = 0;
 int mode = 1; //Modi: 0 = Normal Only Color with Truning, 1 = A constant rotating Pixel, 2 = colorWipes, 3 = rainbow, 4 = rainbowCycle, 5 = theaterChaseRainbow
@@ -54,7 +59,13 @@ void setup(){
   //LEDs
   pixels.begin();
   row = EEPROM.read(0);
- 
+
+  for(int i = 0; i<50;i++){
+    Consumer.write(MEDIA_VOL_DOWN);
+  }
+  Consumer.write(MEDIA_VOL_UP);
+  Consumer.write(MEDIA_VOL_UP);
+  volumeInProzent = 4;
 }
 
 void loop(){ 
@@ -68,20 +79,27 @@ void loop(){
       if(newpos > oldpos && newpos != 7 && oldpos != 0 || newpos == 0 && oldpos == 7){     
         //Serial.println("VolumeDown");
         Consumer.write(MEDIA_VOL_DOWN);
+        volumeInProzent -= 2;
+        if(volumeInProzent < 0){
+          volumeInProzent = 0;
+        }
       }else if(newpos < oldpos && newpos != 0 && oldpos != 7 || newpos == 7 && oldpos == 0){
         //Serial.println("VolumeUp");
         Consumer.write(MEDIA_VOL_UP);
-      }
+        volumeInProzent += 2;
+        if(volumeInProzent>100) {
+          volumeInProzent = 100;
+        }
+      } 
     }
   } else if (menu == 1) {   //Color-Selection
-    Serial.print("Color-Menu");
     int i = TurnEncoder(25);
     if(i != -1){
       row = i;
       lightAll(color[row][0],color[row][1],color[row][2]);
     }
   } else if (menu == 2) {   //Mode-Selection
-    int i = TurnEncoder(24);
+    int i = TurnEncoder(31);
     if(i != -1){
       mode = i;
       brightness = 255;
@@ -132,8 +150,38 @@ void showPixels(){
       m = 0;
     }
     oldpos = newpos;
-  } 
-  if(mode == 8 || mode == 16 || mode == 24 || mode == 0 && menu == 2){
+  } else if((menu == 0 || menu == 2) && mode > 24 && mode < 32){
+      int value = 0;
+      if(menu == 0){
+        value = newpos;
+      } else if(menu == 2){
+        value = mode - 24;
+      }
+      Serial.println(value);
+      if(value != -1 && (menu == 2 || menu == 0)){
+        int i = 0;
+        if(volumeInProzent >= 0 && volumeInProzent <= 33){
+          i = 0;
+        }else if (volumeInProzent >= 34 && volumeInProzent <= 66){
+          i = 1;
+        }else if (volumeInProzent >= 67 && volumeInProzent <= 100){
+          i = 2;
+        }
+        Serial.println(volumeInProzent);
+        if(value == 7 && oldpos == 0){
+          pixels.clear();
+        }else if(value == 0 && oldpos == 7){
+          pixels.fill(pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
+        }else if(value > oldpos){
+          pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
+        }else{
+          pixels.setPixelColor(value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
+        }
+        oldpos = value;
+      }
+  }
+  
+  if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 0 && menu == 2){
     ResetLEDs();
   }
   
@@ -144,7 +192,7 @@ void showPixels(){
 void clickt() {
   //Serial.println("Click");
   if(menu == 0){
-    Consumer.write(MEDIA_VOL_MUTE);
+    //Consumer.write(MEDIA_VOL_MUTE);
     //Serial.println("Mute");
     brightness = 255;
     pixels.fill(pixels.Color(color[row][0],color[row][1],color[row][2]));
@@ -180,7 +228,9 @@ void longPress() {
   brightness = 255;
   ResetLEDs();
   if(menu == 1){
-    lightAll(color[0][0],color[0][1],color[0][2]);
+    pos = row;
+    Serial.println(pos);
+    lightAll(color[pos][0],color[pos][1],color[pos][2]);
   }
   Serial.print(menu);
   Serial.println("LongClick");
