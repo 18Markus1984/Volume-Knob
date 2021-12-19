@@ -33,9 +33,8 @@ uint16_t r, m;
 //Florian-Mode
 byte florian[3][3] = {{0,255,0},{255,255,0},{255,0,0}};
 int volumeInProzent = 0;
+bool calibrated = false;
 
-//Normal-ModeV2
-int NumberOfPixels = 1;
 
 //Settings-menu
 int menu = 0;
@@ -192,16 +191,21 @@ void showPixels(){
       value = mode - 32;
     }
     if(value != -1 && (menu == 2 || menu == 0)){
-        pixels.fill(pixels.Color(color[row][0],color[row][1],color[row][2]));
-        pixels.setPixelColor(value, pixels.Color(0,0,0));
+        pixels.fill(pixels.Color(0,0,0));
+        for(int i = 0; i<3;i++) {
+          int puffer = value+i;
+          if(puffer > 7){
+            puffer = i-1;
+          }
+          pixels.setPixelColor(puffer, pixels.Color(color[row][0],color[row][1],color[row][2]));
+        }
+
         oldpos = value;
     }
   }
-  
   if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){
     ResetLEDs();
   }
-  
   pixels.setBrightness(brightness);
   pixels.show();
 }
@@ -222,8 +226,8 @@ void clickt() {
     newpos = 0;
     oldpos = 0;
     altePosition = -999;
-    delay(100);   
-  } else if(menu == 2){
+    delay(100);    
+  }else if(menu == 2){
     Serial.print("leave with selected mode: ");
     Serial.println(mode);
     EEPROM.update(1,mode);
