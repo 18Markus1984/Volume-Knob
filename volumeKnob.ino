@@ -30,10 +30,12 @@ bool timer2 = false;      //State for turning right
 //Rainbow-Mode
 uint16_t r, m;
 
-//Felix-Mode
+//Florian-Mode
 byte florian[3][3] = {{0,255,0},{255,255,0},{255,0,0}};
 int volumeInProzent = 0;
-bool calibrated = false;
+
+//Normal-ModeV2
+int NumberOfPixels = 1;
 
 //Settings-menu
 int menu = 0;
@@ -58,7 +60,10 @@ void setup(){
 
   //LEDs
   pixels.begin();
+
+  //Read saved settings
   row = EEPROM.read(0);
+  mode = EEPROM.read(1);
 
   for(int i = 0; i<50;i++){
     Consumer.write(MEDIA_VOL_DOWN);
@@ -99,7 +104,7 @@ void loop(){
       lightAll(color[row][0],color[row][1],color[row][2]);
     }
   } else if (menu == 2) {   //Mode-Selection
-    int i = TurnEncoder(31);
+    int i = TurnEncoder(40);
     if(i != -1){
       mode = i;
       brightness = 255;
@@ -179,9 +184,21 @@ void showPixels(){
         }
         oldpos = value;
       }
+  }else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){
+    int value = 0;
+    if(menu == 0){
+      value = newpos;
+    } else if(menu == 2){
+      value = mode - 32;
+    }
+    if(value != -1 && (menu == 2 || menu == 0)){
+        pixels.fill(pixels.Color(color[row][0],color[row][1],color[row][2]));
+        pixels.setPixelColor(value, pixels.Color(0,0,0));
+        oldpos = value;
+    }
   }
   
-  if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 0 && menu == 2){
+  if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){
     ResetLEDs();
   }
   
@@ -209,6 +226,8 @@ void clickt() {
   } else if(menu == 2){
     Serial.print("leave with selected mode: ");
     Serial.println(mode);
+    EEPROM.update(1,mode);
+    pixels.clear();
     menu = 0;
     r = 0;
     m = 0; 
@@ -231,6 +250,19 @@ void longPress() {
     pos = row;
     Serial.println(pos);
     lightAll(color[pos][0],color[pos][1],color[pos][2]);
+  } else if(menu == 2){
+    row = EEPROM.read(0); 
+    delay(100);  
+  }
+  if(menu >= 3){
+    menu = 0;
+    mode = EEPROM.read(1);
+    r = 0;
+    m = 0; 
+    pos = 0;
+    newpos = 0;
+    oldpos = 0;
+    altePosition = -999;
   }
   Serial.print(menu);
   Serial.println("LongClick");
