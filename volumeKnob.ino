@@ -5,7 +5,7 @@
 #include <EEPROM.h>
 
 #define PIN       7 //Datapin for the LEDs
-#define NUMPIXELS 8 //Anzahl der LEDs
+#define NUMPIXELS 8 //number of LEDs in the row
 
 //Color Options
 byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{191,255,0},{128,255,0},{64,255,0},{0,255,0},{0,255,64},{0,255,128},{0,255,191},{0,255,255},{0,191,255},
@@ -15,7 +15,7 @@ int row = 0;  //pointer, which color is selected
 //Rotary Encoder
 const int CLK = 6;//Datapin Encoder         
 const int DT = 5; //Datepin Encoder
-const int SW = 2; //Button des Encoders
+const int SW = 2; //Button of the Encoders
 int pos = 0;    //the variable for the Encoder-function to give back
 long oldPosition = -999;   //position for the rotary encoder
 bool turnLeft = false;      //State for turning left //I use this variables to check that you have to move two incerements to get one move in the volume 
@@ -34,7 +34,7 @@ int volumeInProzent = 0;
 
 //Settings-menu
 int menu = 0; //0 = Sound-Mode, 1 = color selection, 2 = modi-selection
-int mode = 1; //
+int mode = 1; //1-7 = Rotating-Pixel, 9-15 = rgb-wheel fade, 17-23 = rgb-wheel with the moving colors, 25-31 = percent red, yellow, green for different noise levels, 33-39 = simular to the first mode but you have 3 LEDs and the pixels stay on
 int brightness = 255; //of LEDs from 0-255
 
 //Generall Objects
@@ -175,7 +175,7 @@ void showPixels(){    //function for the different Modis you could select
         }
         oldpos = value;
       }
-  }else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 pixels not one and the pixels stay on.
+  }else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
     int value = 0;
     if(menu == 0){
       value = newpos;
