@@ -10,27 +10,27 @@
 //Color Options
 byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{191,255,0},{128,255,0},{64,255,0},{0,255,0},{0,255,64},{0,255,128},{0,255,191},{0,255,255},{0,191,255},
 {0,128,255},{0,64,255},{0,0,255},{64,0,255},{128,0,255},{191,0,255},{255,0,255},{255,0,191},{255,0,128},{255,0,64},{255,0,0}};  //Array with the different color-values would be better to do this with a function
-int row = 0;  //pointer, which color is selected
+int row = 0;  //pointer, which color is selected ##das is kein Pointer
 
 //Rotary Encoder
-const int CLK = 6;//Datapin Encoder         
+const int CLK = 6;//Clockpin Encoder         
 const int DT = 5; //Datepin Encoder
 const int SW = 2; //Button of the Encoders
-int pos = 0;    //the variable for the Encoder-function to give back
+int pos = 0;    //the variable for the Encoder-function to give back ## ?
 long oldPosition = -999;   //position for the rotary encoder
 bool turnLeft = false;      //State for turning left //I use this variables to check that you have to move two incerements to get one move in the volume 
 bool turnRight = false;      //State for turning right
 
 //variable for the first mode
-int newpos = 0;   //the selected LED that should lit up
-int oldpos = 0;   //the last lit up LED, You need this to turn the LED off after you jump to the next one
+int newPos = 0;   //the selected LED that should light up
+int oldpos = 0;   //the last lit up LED, You need this to turn the LED off after you jump to the next one ##Name nicht eindeutig, oldPosition-oldpos
 
 //Rainbow-Mode
 uint16_t r, m;
 
 //Florian-Mode
 byte florian[3][3] = {{0,255,0},{255,255,0},{255,0,0}}; //green yellow red for the traffic light mode
-int volumeInProzent = 0;
+int volumeInPercent = 0;
 
 //Settings-menu
 int menu = 0; //0 = Sound-Mode, 1 = color selection, 2 = modi-selection
@@ -39,7 +39,7 @@ int brightness = 255; //of LEDs from 0-255
 
 //Generall Objects
 OneButton EncoderSwitch(SW,true);   //Libary that adds functions for LongPress, DoubleClick etc.
-Encoder meinEncoder(DT,CLK);      
+Encoder myEncoder(DT,CLK);      
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 void setup(){
@@ -50,7 +50,7 @@ void setup(){
   //Rotary Encoder with Switch
   Serial.println("Rotary Encoder setup...");
   pinMode(SW, INPUT);
-  EncoderSwitch.attachClick(clickt);
+  EncoderSwitch.attachClick(clicked);
   EncoderSwitch.attachLongPressStop(longPress);
 
   //LEDs
@@ -60,164 +60,205 @@ void setup(){
   row = EEPROM.read(0);   
   mode = EEPROM.read(1);
 
-  for(int i = 0; i<50;i++){   //for a special mode doesn't work till now
+  for(int i = 0; i<50;i++){   //for a special mode doesn't work till now ##geht hier ein direktes auf 0 setzten nicht ?
     Consumer.write(MEDIA_VOL_DOWN);
   }
   Consumer.write(MEDIA_VOL_UP);
   Consumer.write(MEDIA_VOL_UP);
-  volumeInProzent = 4;
+  volumeInPercent = 4;
 }
 
 void loop(){ 
-  if(menu == 0){    //Volume-Control
-    int i = TurnEncoder(8);
+  if(menu == 0){  
+    volumeControl();
+  } 
+  else if (menu == 1) {   
+    colorSelection();
+  } 
+  else if (menu == 2) {  
+    modeSelection();
+  }
+  showPixels();
+  EncoderSwitch.tick();   //the libary reads the encoder value and gives back an int ##dat gibt garnischt zurück. Also zumindest speicherst du es nicht ab
+  delay(10); 
+}
+
+void volumeControl(){
+  int i = TurnEncoder(8);
     if(i != -1){
-      newpos = i; 
+      newPos = i; 
       brightness = 255;              
-      if(newpos > oldpos && newpos != 7 && oldpos != 0 || newpos == 0 && oldpos == 7){ //solves the issue from 0 to 7 and 7 to 0     
+      if(newPos > oldpos && newPos != 7 && oldpos != 0 || newPos == 0 && oldpos == 7){ //solves the issue from 0 to 7 and 7 to 0     
         Consumer.write(MEDIA_VOL_DOWN);   
-        volumeInProzent -= 2;
-        if(volumeInProzent < 0){
-          volumeInProzent = 0;
+        volumeInPercent -= 2;
+        if(volumeInPercent < 0){
+          volumeInPercent = 0;
         }
-      }else if(newpos < oldpos && newpos != 0 && oldpos != 7 || newpos == 7 && oldpos == 0){
+      }else if(newPos < oldpos && newPos != 0 && oldpos != 7 || newPos == 7 && oldpos == 0){
         Consumer.write(MEDIA_VOL_UP);
-        volumeInProzent += 2;
-        if(volumeInProzent>100) {
-          volumeInProzent = 100;
+        volumeInPercent += 2;
+        if(volumeInPercent>100) {
+          volumeInPercent = 100;
         }
       } 
     }
-  } else if (menu == 1) {   //Color-Selection
-    int i = TurnEncoder(25);    //turns the Encoder with the length of the array
+}
+
+void colorSelection(){
+  int i = TurnEncoder(25);    //turns the Encoder with the length of the array
     if(i != -1){
       row = i;
       lightAll(color[row][0],color[row][1],color[row][2]);
     }
-  } else if (menu == 2) {   //Mode-Selection
-    int i = TurnEncoder(40);  //6 Positions for every for every mode with a blank spot between the modes
+}
+
+void modeSelection(){
+  int i = TurnEncoder(40);  //6 Positions for every mode with a blank spot between the modes
     if(i != -1){
       mode = i;
       brightness = 255;
     }
-  }
-  showPixels();
-  EncoderSwitch.tick();   //the libary reads the encoder value and gives back an int
-  delay(10); 
 }
 
 void showPixels(){    //function for the different Modis you could select
-  if((menu == 0 || menu == 2 )&& mode > 0 && mode < 8){   //The first mode with only one pixel lit up that fades the color after some time
-    int value = 0;
-    if(menu == 0){
-      value = newpos;
-    } else if(menu == 2){
-      value = mode;
+  int value = 0; //##ich bin mir grad unsicher aber ich glaub value kann man hier auch raus lassen und nur als lokale variable in den Funktionen verwenden
+
+    if((menu == 0 || menu == 2 )&& mode > 0 && mode < 8){   //The first mode with only one pixel lit up that fades the color after some time
+      onePixelFade(&menu,&value);
     }
-    if(value != -1 && (menu == 2 || menu == 0)){
-        pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
-        pixels.setPixelColor(value, pixels.Color(color[row][0],color[row][1],color[row][2]));
-        oldpos = value;
+    else if((menu == 0 || menu == 2)&& mode > 8 && mode < 16){   //the rgb-wheel fade
+      rgbWheelFade();
     }
-    if(brightness <= 1){
+    else if((menu == 0 || menu == 2) && mode > 16 && mode < 24){//the rgb-wheel with the moving colors
+      rgbWheelMoving();
+    } 
+    else if((menu == 0 || menu == 2) && mode > 24 && mode < 32){  //the mode for the percent red, yellow, green for different noise levels
+        noiseLevels(&menu,&value);
+    }
+    else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
+      pixelFadeStay(&menu,&value);
+    }
+    if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
       ResetLEDs();
     }
-    for(int i = 0; i < NUMPIXELS; i++){
-      if(pixels.getPixelColor(i) != pixels.Color(0,0,0)){
-        brightness = brightness - 1;
-        i = NUMPIXELS;
-      }
-    }
-  }else if((menu == 0 || menu == 2)&& mode > 8 && mode < 16){   //the rgb-wheel fade
-     for(r = 0; r < NUMPIXELS; r++) {
-      pixels.setPixelColor(r, Wheel((r+m) & 255));
-    }
-    m++;
-    if(m >= 256) {
-      m = 0;
-    }
-    oldpos = newpos;
-  }else if((menu == 0 || menu == 2) && mode > 16 && mode < 24){//the rgb-wheel with the moving colors
-     for(r = 0; r < NUMPIXELS; r++) {
-      pixels.setPixelColor(r,Wheel(((r * 256 / pixels.numPixels()) + m) & 255));
-    }
-    m++;
-    if(m >= 256*5) {
-      m = 0;
-    }
-    oldpos = newpos;
-  } else if((menu == 0 || menu == 2) && mode > 24 && mode < 32){  //the mode for the percent red, yellow, green for different noise levels
-      int value = 0;
-      if(menu == 0){
-        value = newpos;
-      } else if(menu == 2){
-        value = mode - 24;
-      }
-      Serial.println(value);
-      if(value != -1 && (menu == 2 || menu == 0)){
-        int i = 0;
-        if(volumeInProzent >= 0 && volumeInProzent <= 33){
-          i = 0;
-        }else if (volumeInProzent >= 34 && volumeInProzent <= 66){
-          i = 1;
-        }else if (volumeInProzent >= 67 && volumeInProzent <= 100){
-          i = 2;
-        }
-        Serial.println(volumeInProzent);
-        if(value == 7 && oldpos == 0){
-          pixels.clear();
-        }else if(value == 0 && oldpos == 7){
-          pixels.fill(pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
-        }else if(value > oldpos){
-          pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
-        }else{
-          pixels.setPixelColor(value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
-        }
-        oldpos = value;
-      }
-  }else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
-    int value = 0;
-    if(menu == 0){
-      value = newpos;
-    } else if(menu == 2){
-      value = mode - 32;
-    }
-    if(value != -1 && (menu == 2 || menu == 0)){
-        pixels.fill(pixels.Color(0,0,0));
-        for(int i = 0; i<3;i++) {
-          int puffer = value+i;
-          if(puffer > 7){
-            puffer = i-1;
-          }
-          pixels.setPixelColor(puffer, pixels.Color(color[row][0],color[row][1],color[row][2]));
-        }
-
-        oldpos = value;
-    }
-  }
-  if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
-    ResetLEDs();
-  }
   pixels.setBrightness(brightness);
   pixels.show();    //Only time I update the pixels
 }
 
-void clickt() {   //Select Button
+void onePixelFade(int *menu, int *value){
+  if(*menu == 0){
+        *value = newPos;
+      } 
+      else if(*menu == 2){
+        *value = mode;
+      }
+      if(*value != -1 && (*menu == 2 || *menu == 0)){
+          pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
+          pixels.setPixelColor(*value, pixels.Color(color[row][0],color[row][1],color[row][2]));
+          oldpos = *value;
+      }
+      if(brightness <= 1){
+        ResetLEDs();
+      }
+      for(int i = 0; i < NUMPIXELS; i++){
+        if(pixels.getPixelColor(i) != pixels.Color(0,0,0)){
+          brightness = brightness - 1;
+          i = NUMPIXELS;
+        }
+      }
+}
+
+void rgbWheelFade(){
+  for(r = 0; r < NUMPIXELS; r++) {
+        pixels.setPixelColor(r, Wheel((r+m) & 255));
+      }
+      m++;
+      if(m >= 256) {
+        m = 0;
+      }
+      oldpos = newPos;
+}
+
+void rgbWheelMoving(){
+  for(r = 0; r < NUMPIXELS; r++) {
+        pixels.setPixelColor(r,Wheel(((r * 256 / pixels.numPixels()) + m) & 255));
+      }
+      m++;
+      if(m >= 256*5) {
+        m = 0;
+      }
+      oldpos = newPos;
+}
+
+void noiseLevels(int *menu, int *value){
+  int i;
+  if(*menu == 0){
+          *value = newPos;
+        } else if(*menu == 2){
+          *value = mode - 24;
+        }
+        Serial.println(*value);
+        if(*value != -1 && (*menu == 2 || menu == 0)){
+          if(volumeInPercent >= 0 && volumeInPercent <= 33){
+            i = 0;
+          }else if (volumeInPercent >= 34 && volumeInPercent <= 66){
+            i = 1;
+          }else if (volumeInPercent >= 67 && volumeInPercent <= 100){
+            i = 2;
+          }
+          Serial.println(volumeInPercent);
+          if(*value == 7 && oldpos == 0){
+            pixels.clear();
+          }else if(*value == 0 && oldpos == 7){
+            pixels.fill(pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
+          }else if(*value > oldpos){
+            pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
+          }else{
+            pixels.setPixelColor(*value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
+          }
+          oldpos = *value;
+        }
+}
+
+void pixelFadeStay(int *menu, int *value){
+  int puffer = 0;
+  if(*menu == 0){
+        *value = newPos;
+      } 
+      else if(*menu == 2){
+        *value = mode - 32;
+      }
+      if(*value != -1 && (*menu == 2 || *menu == 0)){
+          pixels.fill(pixels.Color(0,0,0));
+          for(int i = 0; i<3;i++) {
+            puffer = *value+i;
+            if(puffer > 7){
+              puffer = i-1;
+            }
+            pixels.setPixelColor(puffer, pixels.Color(color[row][0],color[row][1],color[row][2]));
+          }
+          oldpos = *value;
+      }
+}
+
+void clicked() {   //Select Button
   if(menu == 0){
     Consumer.write(MEDIA_VOL_MUTE);
     brightness = 255;
     pixels.fill(pixels.Color(color[row][0],color[row][1],color[row][2]));
     delay(700); 
-  } else if(menu == 1){   //leave the color-selection menu and select the color 
+  } 
+  else if(menu == 1){   //leave the color-selection menu and select the color 
     Serial.println("leave with selected color");
     EEPROM.update(0,row);
     menu = 0;
     pos = 0;
-    newpos = 0;
+    newPos = 0;
     oldpos = 0;
     oldPosition = -999;
     delay(100);    
-  }else if(menu == 2){    //leave the mode-menu and select the mode
+  }
+  else if(menu == 2){    //leave the mode-menu and select the mode
     Serial.print("leave with selected mode: ");
     Serial.println(mode);
     EEPROM.update(1,mode);
@@ -226,7 +267,7 @@ void clickt() {   //Select Button
     r = 0;
     m = 0; 
     pos = 0;
-    newpos = 0;
+    newPos = 0;
     oldpos = 0;
     oldPosition = -999;
     delay(100);   
@@ -236,13 +277,14 @@ void clickt() {   //Select Button
 void longPress() {    //Menu button
   menu++;   //jump into the next menu up
   pos = 0;
-  newpos = 0;
+  newPos = 0;
   oldpos = 0;
   brightness = 255;
   ResetLEDs();
   if(menu == 1){
     lightAll(color[row][0],color[row][1],color[row][2]);
-  } else if(menu == 2){
+  } 
+  else if(menu == 2){
     row = EEPROM.read(0); 
     delay(100);  
   }
@@ -252,7 +294,7 @@ void longPress() {    //Menu button
     r = 0;
     m = 0; 
     pos = 0;
-    newpos = 0;
+    newPos = 0;
     oldpos = 0;
     oldPosition = -999;
   }
@@ -261,7 +303,7 @@ void longPress() {    //Menu button
 }
 
 int TurnEncoder(int len) {      //The function that reads the data from the encoder relative to the given size. You can put in the len as the max number of points for one rotation
-  long newPosition = meinEncoder.read();   //read the position of the encoder
+  long newPosition = myEncoder.read();   //read the position of the encoder
   if (newPosition != oldPosition){    //compare it to the old position
     if(newPosition < oldPosition){      //if the wheel turns left
       if(turnLeft){       //turnLeft/Right are for reducing the number of points by half so you have to pass two points to get one, because the encoder roation points are sometimes pretty small
@@ -271,10 +313,12 @@ int TurnEncoder(int len) {      //The function that reads the data from the enco
         }        
         turnLeft = false;
         turnRight = false;
-      }else {
+      }
+      else {
         turnLeft = true;
       }
-    }else {   
+    }
+    else {   
        if(turnRight){
         pos++;
         if(pos == len){
