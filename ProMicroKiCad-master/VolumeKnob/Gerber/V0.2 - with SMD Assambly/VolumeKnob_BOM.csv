@@ -1,0 +1,5 @@
+Comment,Designator,Footprint,LCSC
+"SK6812","D1,D2,D3,D4,D5,D6,D7,D8","LED_SMD:LED_SK6812_PLCC4_5.0x5.0mm_P3.2mm",""
+"10 kΩ ","R1","Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal",""
+"Rotary_Encoder_Switch","SW1","Rotary_Encoder:RotaryEncoder_Alps_EC12E-Switch_Vertical_H20mm",""
+"ProMicro","U1","promicro:ProMicro-NoSilk",""

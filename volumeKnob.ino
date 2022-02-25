@@ -5,7 +5,7 @@
 #include <EEPROM.h>
 
 #define PIN       7 //Datapin for the LEDs
-#define NUMPIXELS 8 //number of LEDs in the row
+#define NUMPIXELS 9 //number of LEDs in the row
 
 //Color Options
 byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{191,255,0},{128,255,0},{64,255,0},{0,255,0},{0,255,64},{0,255,128},{0,255,191},{0,255,255},{0,191,255},
@@ -41,6 +41,24 @@ int brightness = 255; //of LEDs from 0-255
 OneButton EncoderSwitch(SW,true);   //Libary that adds functions for LongPress, DoubleClick etc.
 Encoder myEncoder(DT,CLK);      
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+
+void setup();
+void loop();
+void volumeControl();
+void colorSelection();
+void modeSelection();
+void showPixels();
+void onePixelFade();
+void rgbWheelFade();
+void rgbWheelMoving();
+void noiseLevels();
+void pixelFadeStay();
+void clicked();
+void longPress();
+int TurnEncoder(int len);
+uint32_t Wheel(byte WheelPos);
+void resetLEDs();
+void lightAll(int r, int g, int b);
 
 void setup(){
   Serial.begin(9600);
@@ -84,18 +102,18 @@ void loop(){
 }
 
 void volumeControl(){
-  int i = TurnEncoder(8);
+  int i = TurnEncoder(NUMPIXELS);
     if(i != -1){
       newPos = i; 
       brightness = 255;              
-      if(newPos > oldpos && newPos != 7 && oldpos != 0 || newPos == 0 && oldpos == 7){ //solves the issue from 0 to 7 and 7 to 0     
-        Consumer.write(MEDIA_VOL_DOWN);   
+      if(newPos > oldpos && newPos != NUMPIXELS-1 && oldpos != 0 || newPos == 0 && oldpos == NUMPIXELS-1){ //solves the issue from 0 to 7 and 7 to 0     
+        Consumer.write(MEDIA_VOL_UP);   
         volumeInPercent -= 2;
         if(volumeInPercent < 0){
           volumeInPercent = 0;
         }
-      }else if(newPos < oldpos && newPos != 0 && oldpos != 7 || newPos == 7 && oldpos == 0){
-        Consumer.write(MEDIA_VOL_UP);
+      }else if(newPos < oldpos && newPos != 0 && oldpos != NUMPIXELS-1 || newPos == NUMPIXELS-1 && oldpos == 0){
+        Consumer.write(MEDIA_VOL_DOWN);
         volumeInPercent += 2;
         if(volumeInPercent>100) {
           volumeInPercent = 100;
@@ -113,18 +131,16 @@ void colorSelection(){
 }
 
 void modeSelection(){
-  int i = TurnEncoder(40);  //6 Positions for every mode with a blank spot between the modes
+  int i = TurnEncoder(NUMPIXELS*5);  //6 Positions for every mode with a blank spot between the modes
     if(i != -1){
       mode = i;
       brightness = 255;
     }
 }
-
+/*
 void showPixels(){    //function for the different Modis you could select
-  int value = 0; //##ich bin mir grad unsicher aber ich glaub value kann man hier auch raus lassen und nur als lokale variable in den Funktionen verwenden
-
     if((menu == 0 || menu == 2 )&& mode > 0 && mode < 8){   //The first mode with only one pixel lit up that fades the color after some time
-      onePixelFade(&menu,&value);
+      onePixelFade();
     }
     else if((menu == 0 || menu == 2)&& mode > 8 && mode < 16){   //the rgb-wheel fade
       rgbWheelFade();
@@ -133,32 +149,57 @@ void showPixels(){    //function for the different Modis you could select
       rgbWheelMoving();
     } 
     else if((menu == 0 || menu == 2) && mode > 24 && mode < 32){  //the mode for the percent red, yellow, green for different noise levels
-        noiseLevels(&menu,&value);
+        noiseLevels();
     }
     else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
-      pixelFadeStay(&menu,&value);
+      pixelFadeStay();
     }
     if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
-      ResetLEDs();
+      resetLEDs();
+    }
+  pixels.setBrightness(brightness);
+  pixels.show();    //Only time I update the pixels
+}
+*/
+
+void showPixels(){    //function for the different Modis you could select
+    if((menu == 0 || menu == 2 )&& mode > 0 && mode < NUMPIXELS){   //The first mode with only one pixel lit up that fades the color after some time
+      onePixelFade();
+    }
+    else if((menu == 0 || menu == 2)&& mode > NUMPIXELS && mode < NUMPIXELS*2){   //the rgb-wheel fade
+      rgbWheelFade();
+    }
+    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*2 && mode < NUMPIXELS*3){//the rgb-wheel with the moving colors
+      rgbWheelMoving();
+    } 
+    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*3 && mode < NUMPIXELS*4){  //the mode for the percent red, yellow, green for different noise levels
+        noiseLevels();
+    }
+    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*4 && mode < NUMPIXELS*5){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
+      pixelFadeStay();
+    }
+    if(mode == NUMPIXELS || mode == NUMPIXELS*2 || mode == NUMPIXELS*3 || mode == NUMPIXELS*4 || mode == NUMPIXELS*5 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
+      resetLEDs();
     }
   pixels.setBrightness(brightness);
   pixels.show();    //Only time I update the pixels
 }
 
-void onePixelFade(int *menu, int *value){
-  if(*menu == 0){
-        *value = newPos;
+void onePixelFade(){
+  int value = 0;
+  if(menu == 0){
+        value = newPos;
       } 
-      else if(*menu == 2){
-        *value = mode;
+      else if(menu == 2){
+        value = mode;
       }
-      if(*value != -1 && (*menu == 2 || *menu == 0)){
+      if(value != -1 && (menu == 2 || menu == 0)){
           pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
-          pixels.setPixelColor(*value, pixels.Color(color[row][0],color[row][1],color[row][2]));
-          oldpos = *value;
+          pixels.setPixelColor(value, pixels.Color(color[row][0],color[row][1],color[row][2]));
+          oldpos = value;
       }
       if(brightness <= 1){
-        ResetLEDs();
+        resetLEDs();
       }
       for(int i = 0; i < NUMPIXELS; i++){
         if(pixels.getPixelColor(i) != pixels.Color(0,0,0)){
@@ -190,15 +231,15 @@ void rgbWheelMoving(){
       oldpos = newPos;
 }
 
-void noiseLevels(int *menu, int *value){
-  int i;
-  if(*menu == 0){
-          *value = newPos;
-        } else if(*menu == 2){
-          *value = mode - 24;
+void noiseLevels(){
+  int i, value = 0;
+  if(menu == 0){
+          value = newPos;
+        } else if(menu == 2){
+          value = mode - NUMPIXELS*3;
         }
-        Serial.println(*value);
-        if(*value != -1 && (*menu == 2 || menu == 0)){
+        Serial.println(value);
+        if(value != -1 && (menu == 2 || menu == 0)){
           if(volumeInPercent >= 0 && volumeInPercent <= 33){
             i = 0;
           }else if (volumeInPercent >= 34 && volumeInPercent <= 66){
@@ -207,37 +248,37 @@ void noiseLevels(int *menu, int *value){
             i = 2;
           }
           Serial.println(volumeInPercent);
-          if(*value == 7 && oldpos == 0){
+          if(value == NUMPIXELS-1 && oldpos == 0){
             pixels.clear();
-          }else if(*value == 0 && oldpos == 7){
+          }else if(value == 0 && oldpos == NUMPIXELS){
             pixels.fill(pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
-          }else if(*value > oldpos){
+          }else if(value > oldpos){
             pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
           }else{
-            pixels.setPixelColor(*value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
+            pixels.setPixelColor(value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
           }
-          oldpos = *value;
+          oldpos = value;
         }
 }
 
-void pixelFadeStay(int *menu, int *value){
-  int puffer = 0;
-  if(*menu == 0){
-        *value = newPos;
+void pixelFadeStay(){
+  int puffer = 0, value = 0;
+  if(menu == 0){
+        value = newPos;
       } 
-      else if(*menu == 2){
-        *value = mode - 32;
+      else if(menu == 2){
+        value = mode - NUMPIXELS*4;
       }
-      if(*value != -1 && (*menu == 2 || *menu == 0)){
+      if(value != -1 && (menu == 2 || menu == 0)){
           pixels.fill(pixels.Color(0,0,0));
           for(int i = 0; i<3;i++) {
-            puffer = *value+i;
-            if(puffer > 7){
+            puffer = value+i;
+            if(puffer > NUMPIXELS-1){
               puffer = i-1;
             }
             pixels.setPixelColor(puffer, pixels.Color(color[row][0],color[row][1],color[row][2]));
           }
-          oldpos = *value;
+          oldpos = value;
       }
 }
 
@@ -280,7 +321,7 @@ void longPress() {    //Menu button
   newPos = 0;
   oldpos = 0;
   brightness = 255;
-  ResetLEDs();
+  resetLEDs();
   if(menu == 1){
     lightAll(color[row][0],color[row][1],color[row][2]);
   } 
@@ -305,11 +346,11 @@ void longPress() {    //Menu button
 int TurnEncoder(int len) {      //The function that reads the data from the encoder relative to the given size. You can put in the len as the max number of points for one rotation
   long newPosition = myEncoder.read();   //read the position of the encoder
   if (newPosition != oldPosition){    //compare it to the old position
-    if(newPosition < oldPosition){      //if the wheel turns left
+    if(newPosition > oldPosition){      //if the wheel turns left
       if(turnLeft){       //turnLeft/Right are for reducing the number of points by half so you have to pass two points to get one, because the encoder roation points are sometimes pretty small
-        pos--;
-        if(pos < 0){
-          pos = len - 1;
+        pos++;
+        if(pos == len){
+          pos = 0;
         }        
         turnLeft = false;
         turnRight = false;
@@ -320,9 +361,9 @@ int TurnEncoder(int len) {      //The function that reads the data from the enco
     }
     else {   
        if(turnRight){
-        pos++;
-        if(pos == len){
-          pos = 0;
+        pos--;
+        if(pos < 0){
+          pos = len - 1;
         }
         turnRight = false;
         turnLeft = false;
@@ -349,7 +390,7 @@ uint32_t Wheel(byte WheelPos) {   //From the Adafruit Libyary a function for a r
   return pixels.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
 }
 
-void ResetLEDs(){
+void resetLEDs(){
   pixels.clear();
 }
 
