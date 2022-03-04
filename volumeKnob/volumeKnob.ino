@@ -5,7 +5,7 @@
 #include <EEPROM.h>
 
 #define PIN       7 //Datapin for the LEDs
-#define NUMPIXELS 9 //number of LEDs in the row
+#define NUMPIXELS 8 //number of LEDs in the row
 
 //Color Options
 byte color[25][3] = {{255,0,0},{255,64,0},{255,128,0},{255,191,0},{255,255,0},{191,255,0},{128,255,0},{64,255,0},{0,255,0},{0,255,64},{0,255,128},{0,255,191},{0,255,255},{0,191,255},
@@ -16,7 +16,7 @@ int row = 0;  //pointer, which color is selected ##das is kein Pointer
 const int CLK = 6;//Clockpin Encoder         
 const int DT = 5; //Datepin Encoder
 const int SW = 2; //Button of the Encoders
-int pos = 0;    //the variable for the Encoder-function to give back ## ?
+int pos = 0;    //the variable for the Encoder-function to give back 
 long oldPosition = -999;   //position for the rotary encoder
 bool turnLeft = false;      //State for turning left //I use this variables to check that you have to move two incerements to get one move in the volume 
 bool turnRight = false;      //State for turning right
@@ -51,7 +51,6 @@ void showPixels();
 void onePixelFade();
 void rgbWheelFade();
 void rgbWheelMoving();
-void noiseLevels();
 void pixelFadeStay();
 void clicked();
 void longPress();
@@ -103,16 +102,17 @@ void loop(){
 
 void volumeControl(){
   int i = TurnEncoder(NUMPIXELS);
-    if(i != -1){
+    if(i != -1){ 
       newPos = i; 
-      brightness = 255;              
-      if(newPos > oldpos && newPos != NUMPIXELS-1 && oldpos != 0 || newPos == 0 && oldpos == NUMPIXELS-1){ //solves the issue from 0 to 7 and 7 to 0     
+      brightness = 255;           
+      if(newPos > oldpos && newPos != NUMPIXELS-1 && oldpos != 0 || newPos == 0 && oldpos == NUMPIXELS-1){ //solves the issue from 0 to NUMPIXELS-1 and NUMPIXELS-1 to 0     
         Consumer.write(MEDIA_VOL_UP);   
         volumeInPercent -= 2;
         if(volumeInPercent < 0){
           volumeInPercent = 0;
         }
-      }else if(newPos < oldpos && newPos != 0 && oldpos != NUMPIXELS-1 || newPos == NUMPIXELS-1 && oldpos == 0){
+      }
+      else if(newPos < oldpos && newPos != 0 && oldpos != NUMPIXELS-1 || newPos == NUMPIXELS-1 && oldpos == 0){
         Consumer.write(MEDIA_VOL_DOWN);
         volumeInPercent += 2;
         if(volumeInPercent>100) {
@@ -131,36 +131,13 @@ void colorSelection(){
 }
 
 void modeSelection(){
-  int i = TurnEncoder(NUMPIXELS*5);  //6 Positions for every mode with a blank spot between the modes
+  int i = TurnEncoder(NUMPIXELS*4);  //6 Positions for every mode with a blank spot between the modes
     if(i != -1){
       mode = i;
       brightness = 255;
     }
 }
-/*
-void showPixels(){    //function for the different Modis you could select
-    if((menu == 0 || menu == 2 )&& mode > 0 && mode < 8){   //The first mode with only one pixel lit up that fades the color after some time
-      onePixelFade();
-    }
-    else if((menu == 0 || menu == 2)&& mode > 8 && mode < 16){   //the rgb-wheel fade
-      rgbWheelFade();
-    }
-    else if((menu == 0 || menu == 2) && mode > 16 && mode < 24){//the rgb-wheel with the moving colors
-      rgbWheelMoving();
-    } 
-    else if((menu == 0 || menu == 2) && mode > 24 && mode < 32){  //the mode for the percent red, yellow, green for different noise levels
-        noiseLevels();
-    }
-    else if((menu == 0 || menu == 2) && mode > 32 && mode < 40){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
-      pixelFadeStay();
-    }
-    if(mode == 8 || mode == 16 || mode == 24 || mode == 32 || mode == 40 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
-      resetLEDs();
-    }
-  pixels.setBrightness(brightness);
-  pixels.show();    //Only time I update the pixels
-}
-*/
+
 
 void showPixels(){    //function for the different Modis you could select
     if((menu == 0 || menu == 2 )&& mode > 0 && mode < NUMPIXELS){   //The first mode with only one pixel lit up that fades the color after some time
@@ -172,10 +149,7 @@ void showPixels(){    //function for the different Modis you could select
     else if((menu == 0 || menu == 2) && mode > NUMPIXELS*2 && mode < NUMPIXELS*3){//the rgb-wheel with the moving colors
       rgbWheelMoving();
     } 
-    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*3 && mode < NUMPIXELS*4){  //the mode for the percent red, yellow, green for different noise levels
-        noiseLevels();
-    }
-    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*4 && mode < NUMPIXELS*5){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
+    else if((menu == 0 || menu == 2) && mode > NUMPIXELS*3 && mode < NUMPIXELS*4){ //simular to the first mode but you have 3 LEDs and the pixels stay on.
       pixelFadeStay();
     }
     if(mode == NUMPIXELS || mode == NUMPIXELS*2 || mode == NUMPIXELS*3 || mode == NUMPIXELS*4 || mode == NUMPIXELS*5 || mode == 0 && menu == 2){  //The blank spots in the mode-menu where no animations should be shown
@@ -231,35 +205,6 @@ void rgbWheelMoving(){
       oldpos = newPos;
 }
 
-void noiseLevels(){
-  int i, value = 0;
-  if(menu == 0){
-          value = newPos;
-        } else if(menu == 2){
-          value = mode - NUMPIXELS*3;
-        }
-        Serial.println(value);
-        if(value != -1 && (menu == 2 || menu == 0)){
-          if(volumeInPercent >= 0 && volumeInPercent <= 33){
-            i = 0;
-          }else if (volumeInPercent >= 34 && volumeInPercent <= 66){
-            i = 1;
-          }else if (volumeInPercent >= 67 && volumeInPercent <= 100){
-            i = 2;
-          }
-          Serial.println(volumeInPercent);
-          if(value == NUMPIXELS-1 && oldpos == 0){
-            pixels.clear();
-          }else if(value == 0 && oldpos == NUMPIXELS){
-            pixels.fill(pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
-          }else if(value > oldpos){
-            pixels.setPixelColor(oldpos, pixels.Color(0,0,0));
-          }else{
-            pixels.setPixelColor(value, pixels.Color(florian[i][0],florian[i][1],florian[i][2]));
-          }
-          oldpos = value;
-        }
-}
 
 void pixelFadeStay(){
   int puffer = 0, value = 0;
@@ -347,7 +292,7 @@ int TurnEncoder(int len) {      //The function that reads the data from the enco
   long newPosition = myEncoder.read();   //read the position of the encoder
   if (newPosition != oldPosition){    //compare it to the old position
     if(newPosition > oldPosition){      //if the wheel turns left
-      if(turnLeft){       //turnLeft/Right are for reducing the number of points by half so you have to pass two points to get one, because the encoder roation points are sometimes pretty small
+      if(turnRight){       //turnLeft/Right are for reducing the number of points by half so you have to pass two points to get one, because the encoder roation points are sometimes pretty small
         pos++;
         if(pos == len){
           pos = 0;
@@ -356,11 +301,11 @@ int TurnEncoder(int len) {      //The function that reads the data from the enco
         turnRight = false;
       }
       else {
-        turnLeft = true;
+        turnRight = true;
       }
     }
     else {   
-       if(turnRight){
+       if(turnLeft){
         pos--;
         if(pos < 0){
           pos = len - 1;
@@ -368,7 +313,7 @@ int TurnEncoder(int len) {      //The function that reads the data from the enco
         turnRight = false;
         turnLeft = false;
        }else{
-        turnRight = true;
+        turnLeft = true;
        }
     }
     oldPosition = newPosition; 
