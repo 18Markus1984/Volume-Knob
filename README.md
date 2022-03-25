@@ -20,7 +20,7 @@ Not the best idea to use LEDs and not a ring pcb but with some Hot Glue I could 
 
 # V2 Version I'm working on (with USB-C)
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/ezgif-1-3619987249.gif" width="600"/>
+<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/ezgif-1-fd4612bca2.gif" width="600"/>
 
 <img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/VolumeKnobExplosionHochkant-1.jpg" width="600"/>
 
