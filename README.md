@@ -13,7 +13,7 @@ Not the best idea to use LEDs and not a ring pcb but with some Hot Glue I could 
   
 <img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/volumeKnobGif.gif" width="600"/>
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_220220014.jpg" width="600">
+<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20210518_220220014.jpg" heigth="600">
 
 
 # V2 Version I'm working on (with USB-C)
