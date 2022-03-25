@@ -26,6 +26,6 @@ Not the best idea to use LEDs and not a ring pcb but with some Hot Glue I could 
 
 <img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20211214_225130888.jpg" width="600">
 
-<img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20211214_225110189.jpg" width="600">
+
 
 <img src="https://github.com/18Markus1984/Volume-Knob/blob/main/images/PXL_20211214_225100880.jpg" width="600">
