@@ -1,4 +1,0 @@
-(fp_lib_table
-  (lib (name ProMicroKiCad-master)(type KiCad)(uri G:/ProMicroKiCad-master)(options "")(descr ""))
-  (lib (name testboard)(type KiCad)(uri ${KIPRJMOD}/testboard.pretty)(options "")(descr ""))
-)
